@@ -5,12 +5,12 @@ public enum Platform {
     IOS("iOS"),
     FIREFOX("FirefoxOS");
 
-    private String plantformName;
+    private String platformName;
     Platform(String platformName) {
-        this.plantformName = platformName;
+        this.platformName = platformName;
     }
 
-    String getPlantformName() {
-        return plantformName;
+    String getPlatformName() {
+        return platformName;
     }
 }

@@ -1,6 +1,7 @@
 package com.example.jora.test.config;
 
 import com.example.jora.test.config.exceptions.NoPlatformSpecified;
+import com.example.jora.test.utils.EnumUtil;
 
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.remote.DesiredCapabilities;
@@ -15,6 +16,9 @@ import javax.annotation.Nullable;
 
 import io.appium.java_client.android.AndroidDriver;
 
+/**
+ * A wrapper which provides a builder for a Appium driver.
+ */
 public class AppiumWrapper {
     private static final String APP_KEY = "app";
     private static final String PLATFORM_KEY = "platformName";
@@ -33,14 +37,52 @@ public class AppiumWrapper {
 
     @Nullable
     public Platform getPlatform() {
-        return (Platform) capabilities.get(PLATFORM_KEY);
+        return (Platform) EnumUtil.parseByValue(Platform.class, capabilities.get(PLATFORM_KEY), "platformName");
     }
+
+    public String getPackageName() {
+        return (String) capabilities.get(PACKAGE_KEY);
+    }
+
+    public Version getVersion() {
+        return (Version) EnumUtil.parseByValue(Version.class, capabilities.get(VERSION_KEY), "versionName");
+    }
+
+    public Browser getBrowser() {
+        return Browser.valueOf(capabilities.get(BROWSER_KEY).toString().toUpperCase());
+    }
+
+    @Nullable
+    public final <D extends WebDriver> D buildDriver(URL url) {
+        Platform platform = getPlatform();
+        if (platform == null) {
+            throw new NoPlatformSpecified();
+        }
+        switch (platform) {
+            case ANDROID:
+                driver = new AndroidDriver(url, new DesiredCapabilities(capabilities));
+                driver.manage().timeouts().implicitlyWait(5, TimeUnit.SECONDS);
+                return (D) driver;
+            case IOS:
+                return null;
+            case FIREFOX:
+                return null;
+        }
+
+        return null;
+    }
+
     public static class Builder {
         private final AppiumWrapper appiumWrapper;
 
+        /**
+         * @param platform required field to pass platform to Appium api.
+         * @param device required field to pass device to Appium api.
+         * @param packageName required field to pass packageName to Appium api.
+         */
         public Builder(Platform platform, Device device, String packageName) {
             this.appiumWrapper = new AppiumWrapper();
-            this.appiumWrapper.capabilities.put(PLATFORM_KEY, platform.getPlantformName());
+            this.appiumWrapper.capabilities.put(PLATFORM_KEY, platform.getPlatformName());
             this.appiumWrapper.capabilities.put(DEVICE_KEY, device.getDeviceName());
             this.appiumWrapper.capabilities.put(PACKAGE_KEY, packageName);
         }
@@ -61,7 +103,7 @@ public class AppiumWrapper {
         }
 
         public final Builder setPlatform(Platform platform) {
-            appiumWrapper.capabilities.put(PLATFORM_KEY, platform.getPlantformName());
+            appiumWrapper.capabilities.put(PLATFORM_KEY, platform.getPlatformName());
             return this;
         }
 
@@ -75,24 +117,8 @@ public class AppiumWrapper {
             return this;
         }
 
-        @Nullable
-        public final <D extends WebDriver> D buildDriver(URL url) {
-            Platform platform = appiumWrapper.getPlatform();
-            if (platform == null) {
-                throw new NoPlatformSpecified();
-            }
-            switch (platform) {
-                case ANDROID:
-                    appiumWrapper.driver = new AndroidDriver(url, new DesiredCapabilities(appiumWrapper.capabilities));
-                    appiumWrapper.driver.manage().timeouts().implicitlyWait(5, TimeUnit.SECONDS);
-                    return (D) appiumWrapper.driver;
-                case IOS:
-                    return null;
-                case FIREFOX:
-                    return null;
-            }
-
-            return null;
+        public final AppiumWrapper build() {
+            return appiumWrapper;
         }
     }
 }
